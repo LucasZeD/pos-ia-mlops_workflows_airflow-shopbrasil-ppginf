@@ -3,6 +3,33 @@
 Pipeline em Apache Airflow que substitui o script Python anteriormente agendado via cron.
 As tasks buscam os produtos da API de catálogo ([FakeStore API](https://fakestoreapi.com/docs)), calculam por categoria as **quantidades de produtos** e os preços **médio, mínimo e máximo**, e gravam os resultados em um **PostgreSQL** analítico.
 
+> 📊 **[Consultar os resultados completos da execução →](RESULTADOS.md)**
+
+---
+
+## Resultados em destaque
+
+Apresentam-se, a seguir, as principais evidências da execução `manual__2026-11-26T03:08:56+00:00`, concluída com estado `success` em 8 segundos. O detalhamento, com as 11 figuras e a síntese das métricas, consta em **[RESULTADOS.md](RESULTADOS.md)**.
+
+**Graph da execução:** evidenciam-se as topologias linear (`ingestao`), fan-out/fan-in (`analise`) e a persistência paralela.
+
+![Graph com TaskGroups](docs/prints/03_graph_taskgroups.png)
+
+<table>
+  <tr>
+    <td width="50%"><b>Tasks mapeadas dinamicamente:</b> geram-se 4 instâncias de <code>calcular_metricas</code>, uma por categoria.</td>
+    <td width="50%"><b>Grid da execução:</b> exibem-se os três TaskGroups e o estado <code>success</code> de todas as tasks.</td>
+  </tr>
+  <tr>
+    <td><a href="docs/prints/04_tasks_mapeadas.png"><img src="docs/prints/04_tasks_mapeadas.png" alt="Tasks mapeadas"></a></td>
+    <td><a href="docs/prints/02_grid_execucao.png"><img src="docs/prints/02_grid_execucao.png" alt="Grid da execução"></a></td>
+  </tr>
+</table>
+
+**Tabela `metricas_categoria_snapshot`:** mantêm-se 4 linhas (uma por categoria), mesmo após múltiplas execuções, o que comprova a idempotência da gravação.
+
+![Tabela snapshot](docs/prints/08_tabela_snapshot.png)
+
 ---
 
 ## 1. Estrutura do projeto
@@ -11,6 +38,9 @@ As tasks buscam os produtos da API de catálogo ([FakeStore API](https://fakesto
 airflow-shopbrasil/
 ├── docker-compose.yaml                     # Airflow + Postgres (metadados) + Postgres (DW)
 ├── .env.example                            # variáveis de ambiente (copiadas para .env)
+├── RESULTADOS.md                           # evidências da execução (figuras e métricas)
+├── docs/
+│   └── prints/                             # capturas da UI, do banco e dos alertas
 ├── sql/
 │   └── 01_criar_tabelas.sql                # DDLs da base analítica (executados na 1ª inicialização)
 ├── dags/
@@ -141,53 +171,3 @@ Para observarem os retries com backoff e os callbacks em funcionamento, os usuá
 - em `logs/alertas.log`, as linhas `[AVISO] Retentando…` e, ao se esgotarem as tentativas, `[CRITICO] Falha definitiva!`.
 
 Ao final, os usuários restauram as URLs originais.
-
----
-
-## 6. Resultados obtidos
-
-Registram-se, a seguir, as evidências da execução manual `manual__2026-11-26T03:08:56+00:00`, concluída com sucesso em 8 segundos. As imagens permanecem armazenadas em `docs/prints/`.
-
-**Figura 1 – Documentação da DAG exibida na interface (`doc_md`)**
-
-![Documentação da DAG](docs/prints/00_dag_docs.png)
-
-**Figura 2 – Listagem das DAGs:** apresentam-se a DAG ativa, as tags, o agendamento `0 6 * * *` e as execuções concluídas.
-
-![Lista de DAGs](docs/prints/01_lista_dags.png)
-
-**Figura 3 – Grid da execução:** exibem-se os três TaskGroups expandidos e o estado `success` de todas as tasks.
-
-![Grid da execução](docs/prints/02_grid_execucao.png)
-
-**Figura 4 – Graph da execução:** evidenciam-se as topologias linear (`ingestao`), fan-out/fan-in (`analise`, com `calcular_metricas [4]`) e a persistência paralela.
-
-![Graph com TaskGroups](docs/prints/03_graph_taskgroups.png)
-
-**Figura 5 – Tasks mapeadas dinamicamente:** geram-se 4 instâncias de `calcular_metricas`, uma por categoria.
-
-![Tasks mapeadas](docs/prints/04_tasks_mapeadas.png)
-
-**Figura 6 – Log de `consolidar_metricas`:** registram-se as métricas consolidadas por categoria.
-
-![Log consolidar_metricas](docs/prints/05_log_consolidar_metricas.png)
-
-**Figura 7 – Log de `salvar_snapshot`:** confirmam-se as gravações idempotentes no PostgreSQL.
-
-![Log salvar_snapshot](docs/prints/06_log_salvar_snapshot.png)
-
-**Figura 8 – Pools configurados:** verifica-se o `ecommerce_pool` com 2 slots.
-
-![Pool ecommerce_pool](docs/prints/07_pool_ecommerce.png)
-
-**Figura 9 – Tabela `metricas_categoria_snapshot`:** mantêm-se 4 linhas (uma por categoria), mesmo após múltiplas execuções da mesma data de referência.
-
-![Tabela snapshot](docs/prints/08_tabela_snapshot.png)
-
-**Figura 10 – Tabela `metricas_categoria_historico`:** acumulam-se as linhas de cada execução (modo append), identificadas por `run_id`.
-
-![Tabela histórico](docs/prints/09_tabela_historico.png)
-
-**Figura 11 – Arquivo `logs/alertas.log`:** registram-se os alertas simulados emitidos pelos callbacks.
-
-![Alertas simulados](docs/prints/10_alertas_log.png)
